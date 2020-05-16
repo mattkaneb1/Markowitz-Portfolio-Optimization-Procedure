@@ -104,7 +104,7 @@ obj <- wr_hist_data %>%
 obj <- as.numeric(obj[1,])
 
 con <- as.data.frame(ticker) %>%
-  mutate(w = 1) %>%
+  mutate(w = 1.0) %>%
   select(w) %>%
   t() 
 
@@ -112,13 +112,21 @@ con <- matrix(as.numeric(con[1,]),nrow=1,byrow=TRUE)
 
 dir <- c("==")
 
-rhs <-c(1)
+rhs <-c(1.0)
 
-lp(direction = "min",obj,con,dir,rhs) # Minimum Variance 
-# Now find Maximum return with constraints that variance is or is near minimum. 
-
+lp(direction = "min",obj,con,dir,rhs)$solution # Minimum Variance 
 
 
+# Now find Maximum return with constraint that variance is or is near minimum. 
+
+avg_monthly_ror <- as.numeric(avg_monthly_ror[1,])
+
+con <- matrix(c(con,obj),nrow=2,byrow=TRUE)
+dir <- c("==","<")
+
+rhs <-c(1.00,120.0)
+
+lp(direction = "max",avg_monthly_ror,con,dir,rhs)$solution
 
 
 
