@@ -5,6 +5,7 @@ library(janitor)
 library(RSelenium)
 library(dplyr)
 library(lubridate)
+library(lpSolve)
 
 ticker <- c("AMZN","GOOG","MSFT","FB")
 rn <- as.integer(as.POSIXct( Sys.time() ))
@@ -85,23 +86,42 @@ wr_hist_data <- hist_data %>%
   mutate_at(ticker,parse) %>%
   summarize_at(ticker,pct)
 
-annualize_ror <- function(x) {mean(x)*12}
-annualize_sd <- function(x) {sd(x)*sqrt(12)}
-
-annualized_monthly_ror <- wr_hist_data %>%
+avg_monthly_ror <- wr_hist_data %>%
   ungroup() %>%
-  group_by(year) %>%
-  summarize_at(ticker,annualize_ror) 
+  summarize_at(ticker,mean) 
 
-annualized_monthly_sd <- wr_hist_data %>%
+avg_monthly_sd <- wr_hist_data %>%
   ungroup() %>%
-  group_by(year) %>%
-  summarize_at(ticker,annualize_sd)
+  summarize_at(ticker,sd)
 
-covar <- wr_hist_data %>% 
+obj <- wr_hist_data %>% 
   ungroup() %>%
   select(-c(year,month)) %>%
-  cov()
-  
+  cov() %>%
+  as.data.frame() %>%
+  summarize_at(ticker,sum) 
+
+obj <- as.numeric(obj[1,])
+
+con <- as.data.frame(ticker) %>%
+  mutate(w = 1) %>%
+  select(w) %>%
+  t() 
+
+con <- matrix(as.numeric(con[1,]),nrow=1,byrow=TRUE)
+
+dir <- c("==")
+
+rhs <-c(1)
+
+lp(direction = "min",obj,con,dir,rhs) # Minimum Variance 
+# Now find Maximum return with constraints that variance is or is near minimum. 
+
+
+
+
+
+
+
 
 
