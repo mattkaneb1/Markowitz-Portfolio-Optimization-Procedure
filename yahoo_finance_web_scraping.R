@@ -7,7 +7,7 @@ library(dplyr)
 library(lubridate)
 library(lpSolve)
 
-ticker <- c("AMZN","GOOG","MSFT","FB")
+ticker <- c("CAT","NEE","MSFT","WMT","CVS","NKE")
 rn <- as.integer(as.POSIXct( Sys.time() ))
 
 #start RSelenium
@@ -76,7 +76,7 @@ remDr$close()
 rD[["server"]]$stop()
 gc(rD)
 
-pct <- function(x) { (x[1]-x[2])/x[2] * 100}
+pct <- function(x) { (x[1]-x[2])/x[2]}
 parse<- function(x) {as.numeric(gsub(",","",x))}
 
 wr_hist_data <- hist_data %>% 
@@ -94,42 +94,44 @@ avg_monthly_sd <- wr_hist_data %>%
   ungroup() %>%
   summarize_at(ticker,sd)
 
-obj <- wr_hist_data %>% 
+covar <- wr_hist_data %>% 
   ungroup() %>%
   select(-c(year,month)) %>%
-  cov() %>%
-  as.data.frame() %>%
-  summarize_at(ticker,sum) 
-
-obj <- as.numeric(obj[1,])
-
-con <- as.data.frame(ticker) %>%
-  mutate(w = 1.0) %>%
-  select(w) %>%
-  t() 
-
-con <- matrix(as.numeric(con[1,]),nrow=1,byrow=TRUE)
-
-dir <- c("==")
-
-rhs <-c(1.0)
-
-lp(direction = "min",obj,con,dir,rhs)$solution # Minimum Variance 
-
-
-# Now find Maximum return with constraint that variance is or is near minimum. 
+  cov()
 
 avg_monthly_ror <- as.numeric(avg_monthly_ror[1,])
 
-con <- matrix(c(con,obj),nrow=2,byrow=TRUE)
-dir <- c("==","<")
+rand_wts <- runif(n = length(ticker))
+rand_wts <- wts/sum(wts)
 
-rhs <-c(1.00,120.0)
+fr <- function(x) {  
+  #Annualized Returns given Weights
+  returns <- (sum(x * avg_monthly_ror) + 1)^(12 - 1)
+  #Portfolio Variance given Weights
+  risk <- sqrt(t(x) %*% (covar %*% x))
+  #Sharpe Ratio
+  returns/risk
+}
 
-lp(direction = "max",avg_monthly_ror,con,dir,rhs)$solution
+con <- rep(c(1),length(ticker))
 
+solution <- constrOptim(theta=rand_wts,f=fr,grad=NULL,ui=con,ci=c(.99999999),control=list(fnscale = -1))
 
+optim_wts <- solution$par
 
+#Annualized Returns given Weights
+returns <- (sum(optim_wts * avg_monthly_ror) + 1)^(12 - 1)
+#Portfolio Variance given Weights
+risk <- sqrt(t(optim_wts) %*% (covar %*% optim_wts))
+#Sharpe Ratio
+sharpe<- returns/risk
 
+optim_wts<-data.frame(ticker,optim_wts)
 
+ggplot(data = optim_wts, mapping = aes(x = ticker, y = optim_wts,fill=ticker)) +
+  geom_col(color="black",show.legend = FALSE) +
+  geom_text(aes(label=round(optim_wts,3))) +
+  xlab("Ticker") +
+  ylab("Weight") +
+  ggtitle(paste("Optimized Portfolio(Annualized Return ",round(returns,2),"%)",sep=""))
 
