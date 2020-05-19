@@ -161,4 +161,3 @@ ggplot(data = optim_wts, mapping = aes(x = ticker, y = optim_wts,fill=ticker)) +
   xlab("Ticker") +
   ylab("Weight") +
   ggtitle(paste("Optimized Portfolio(Annualized Return ",round(returns*100,2),"%)",sep=""))
-
