@@ -10,10 +10,8 @@ library(lubridate)
 library(lpSolve)
 #===================
 
-#ENABLE/DISABLE SHORT SELLING
-
 #List of Tickers (Manually Inputted For Now)
-ticker <- c("JPM","KO","AAPL","JNJ","XOM")
+ticker <- c("AMZN","MSFT","FB")
 
 #Grab TimeStamp
 rn <- as.integer(as.POSIXct( Sys.time() ))
@@ -129,12 +127,16 @@ fr <- function(x) {
 con <- rep(c(-1),length(ticker))
 con<- con %>% rbind(diag(length(ticker))*-1)
 
+# Get rid of this  to enable short selling
+con<- con %>% rbind(diag(length(ticker))* 1)
+
 # Optimize Sharpe Ratio Function Subject to Constraints
 solution <- constrOptim(theta=rand_wts,
                         f=fr,
                         grad=NULL,
                         ui=con,
-                        ci=c(-1,rep(c(-1),length(ticker)))-1e-6,
+                        #Get rid of third part of this to enable short selling
+                        ci=c(-1,rep(c(-1),length(ticker)),rep(c(0),length(ticker)))-1e-6,
                         control=list(fnscale = -1))
 
 #Save the resulting weights
