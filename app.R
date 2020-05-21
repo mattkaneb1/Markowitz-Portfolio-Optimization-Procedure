@@ -11,9 +11,12 @@ library(lpSolve)
 library(shinythemes)
 #===================
 
-
+# Given the list of tickers, Number of Years of Historical Data, and whether
+# or not to allow for short selling, this function launches a Selenium Server
+# to scrape Yahoo Finance for the requested data. 
+#============================================================================
 scrape <- function(input){
-  #List of Tickers (Manually Inputted For Now)
+  #List of Tickers 
   ticker <- as.character(strsplit(input$tickers, ",")[[1]])
   
   #Grab TimeStamp
@@ -101,8 +104,14 @@ scrape <- function(input){
   
   return(wr_hist_data)
 }
+#============================================================================
 
-optimize <- function(wr_hist_data,short) {
+
+# Given the historical data, the list of tickers, and whether or not to allow
+# for short selling, this function solves for the portfolio weights with the 
+# highest Sharpe Ratio. 
+#============================================================================
+optimize <- function(wr_hist_data,short,ticker) {
   #Calculate Average Monthly ROR
   avg_monthly_ror <- wr_hist_data %>%
     ungroup() %>%
@@ -131,10 +140,10 @@ optimize <- function(wr_hist_data,short) {
   
   #Create Constraint Matrix(Each position must be less than 1 and all of them must sum to 1)
   con <- rep(c(-1),length(ticker))
-  con<- con %>% rbind(diag(length(ticker))*-1)
+  con <- con %>% rbind(diag(length(ticker))*-1)
   
   if (short == FALSE){
-    con<- con %>% rbind(diag(length(ticker))* 1)
+    con <- con %>% rbind(diag(length(ticker))* 1)
     solution <- constrOptim(theta=rand_wts,
                             f=fr,
                             grad=NULL,
@@ -155,8 +164,14 @@ optimize <- function(wr_hist_data,short) {
     
   return(optim_wts)
 }
+#============================================================================
 
-portfolio_stats <- function(wr_hist_data,short){
+
+# Given the historical data, the list of tickers, and whether or not to allow
+# for short selling, this function determines the Annualized Returns, Portfolio
+# Variance, and Sharpe Ratio of the optimal portfolio
+#============================================================================
+portfolio_stats <- function(wr_hist_data,short,ticker){
   #Calculate Average Monthly ROR
   avg_monthly_ror <- wr_hist_data %>%
     ungroup() %>%
@@ -219,6 +234,8 @@ portfolio_stats <- function(wr_hist_data,short){
                       "Sharpe Ratio"       = round(sharpe,2))
   return(table)
 }
+#============================================================================
+
 
 
 # ui 
@@ -270,7 +287,7 @@ server <- function(input,output){
   })
   
   opt_wts<- reactive({
-    data<- optimize(hist_data(),input$short) %>%
+    data<- optimize(hist_data(),input$short,as.character(strsplit(input$tickers, ",")[[1]])) %>%
       rename(optim_wts = `solution.par`)
   })
   
@@ -284,7 +301,7 @@ server <- function(input,output){
   })
   
   output$table1 <- renderTable({
-    portfolio_stats(hist_data(),input$short)
+    portfolio_stats(hist_data(),input$short,as.character(strsplit(input$tickers, ",")[[1]]))
   })
   
 }

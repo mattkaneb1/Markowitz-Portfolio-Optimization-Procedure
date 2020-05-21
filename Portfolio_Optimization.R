@@ -155,7 +155,7 @@ sharpe<- returns/risk
 optim_wts<-data.frame(ticker,optim_wts)
 
 # Plot the optimal portfolio
-ggplot(data = optim_wts, mapping = aes(x = ticker, y = optim_wts,fill=ticker)) +
+ggplot(data = optim_wts, mapping = aes(x = reorder(ticker,optim_wts), y = optim_wts,fill=ticker)) +
   geom_col(color="black",show.legend = FALSE) +
   geom_text(aes(label=round(optim_wts,3))) +
   xlab("Ticker") +
